@@ -1,11 +1,12 @@
-
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Cog } from "lucide-react-native";
+import Svg, { Circle } from "react-native-svg";
 
 import { TNavigationScreenProps } from "../AppRoutes";
 import { useTimer } from "../context/TimerContext";
+import { showNotification } from "../notifications";
 
 type Mode = "focus" | "short" | "long";
 
@@ -49,6 +50,11 @@ export const Home = () => {
     if (running && seconds === 0) {
       setRunning(false);
 
+      showNotification(
+        "Tempo concluído",
+        mode === "focus" ? "Hora da pausa ☕" : "Volte ao foco 🚀"
+      );
+
       if (mode === "focus") {
         const next = pomodoros + 1;
         setPomodoros(next);
@@ -70,8 +76,7 @@ export const Home = () => {
   }, [running, seconds]);
 
   const progress = useMemo(() => {
-    const total = durations[mode];
-    return (seconds / total) * 100;
+    return seconds / durations[mode];
   }, [seconds, mode, focus, shortBreak, longBreak]);
 
   const formatTime = (value: number) => {
@@ -89,12 +94,18 @@ export const Home = () => {
     setSeconds(durations[mode]);
   };
 
-  const circleColor =
-    progress > 50
-      ? "border-primary"
-      : progress > 20
-      ? "border-yellow-400"
-      : "border-red-500";
+  const size = 220;
+  const strokeWidth = 8;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  const strokeDashoffset = circumference * (1 - progress);
+
+  const getCircleColor = () => {
+    if (progress > 0.5) return "#137844";
+    if (progress > 0.2) return "#eab308";
+    return "#ef4444";
+  };
 
   return (
     <View className="flex-1 bg-background px-6 justify-center">
@@ -102,7 +113,7 @@ export const Home = () => {
         onPress={() => navigation.navigate("Settings")}
         className="absolute top-14 right-6"
       >
-        <Cog size={24} color="#ffffff" />
+        <Cog size={34} color="#ffffff" />
       </TouchableOpacity>
 
       <Text
@@ -117,15 +128,39 @@ export const Home = () => {
       </Text>
 
       <View className="items-center">
-        <View
-          className={`w-52 h-52 rounded-full border-[6px] ${circleColor} items-center justify-center`}
-        >
-          <Text
-            className="text-white text-5xl"
-            style={{ fontFamily: "InterBold" }}
-          >
-            {formatTime(seconds)}
-          </Text>
+        <View className="items-center justify-center relative">
+          <Svg width={size} height={size}>
+            <Circle
+              stroke="#3f3f46"
+              fill="none"
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              strokeWidth={strokeWidth}
+            />
+
+            <Circle
+              stroke={getCircleColor()}
+              fill="none"
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              strokeWidth={strokeWidth}
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+             
+            />
+          </Svg>
+
+          <View className="absolute inset-0 items-center justify-center">
+            <Text
+              className="text-white text-5xl"
+              style={{ fontFamily: "InterBold" }}
+            >
+              {formatTime(seconds)}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -157,11 +192,11 @@ export const Home = () => {
       <View className="mt-10 items-center">
         <Text className="text-zinc-300 mb-3">Pomodoros:</Text>
 
-        <View className="flex-row gap-2">
+        <View className="flex-row gap-5">
           {[1, 2, 3, 4].map((item) => (
             <View
               key={item}
-              className={`w-4 h-4 rounded-full ${
+              className={`w-8 h-8 rounded-full ${
                 item <= pomodoros % 4 ? "bg-primary" : "bg-zinc-600"
               }`}
             />
